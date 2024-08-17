@@ -126,7 +126,7 @@ case ${TASK} in
         declare -A DS_CONF
         deepspeed mobilevlm/train/train_mem.py \
             --deepspeed scripts/deepspeed/zero3.json \
-            --lora_enable True --lora_r 128 --lora_alpha 256 \
+            --lora_enable True --lora_r 8 --lora_alpha 16 \
             --learning_rate 2e-4 \
             --model_name_or_path ${OUTPUT_DIR_PT} \
             --version v1 \

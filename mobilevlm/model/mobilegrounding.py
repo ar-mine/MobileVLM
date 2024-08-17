@@ -210,9 +210,6 @@ class MobileVLMMetaForCausalLM(ABC):
     def initialize_vision_tokenizer(self, model_args, tokenizer):
         if model_args.mm_use_im_patch_token:
             tokenizer.add_tokens([DEFAULT_IMAGE_PATCH_TOKEN], special_tokens=True)
-        if model_args.mm_use_seg:
-            tokenizer.add_tokens("[SEG]")
-        if model_args.mm_use_im_patch_token or model_args.mm_use_seg:
             self.resize_token_embeddings(len(tokenizer))
 
         if model_args.mm_use_im_start_end:
@@ -253,16 +250,6 @@ class MobileVLMMetaForCausalLM(ABC):
                     p.requires_grad = False
                 for p in self.get_output_embeddings().parameters():
                     p.requires_grad = False
-        elif model_args.mm_use_seg:
-            for n, p in self.named_parameters():
-                if any(
-                        [
-                            x in n
-                            for x in ["lm_head", "embed_tokens"]
-                        ]
-                ):
-                    print("n: ", n, "p.shape: ", p.shape)
-                    p.requires_grad = True
 
 
 def load_pretrained_model(model_path, load_8bit=False, load_4bit=False, device_map="auto", device="cuda"):
@@ -285,6 +272,9 @@ def load_pretrained_model(model_path, load_8bit=False, load_4bit=False, device_m
         kwargs['torch_dtype'] = torch.float16
 
     tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
+    # 获得 [SEG] token 编码
+    kwargs["seg_token_idx"] = tokenizer("[SEG]", add_special_tokens=False).input_ids[0]
+
     model = MobileLlamaForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
 
     mm_use_im_start_end = getattr(model.config, "mm_use_im_start_end", False)
