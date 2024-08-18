@@ -1,5 +1,5 @@
 deepspeed mobilevlm/train/train_mem.py \
-            --deepspeed scripts/deepspeed/zero3.json \
+            --deepspeed scripts/deepspeed/zero2.json \
             --lora_enable True \
             --lora_r 8 \
             --lora_alpha 16 \

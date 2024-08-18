@@ -1,8 +1,9 @@
 from scripts.inference import inference_once
 
-model_path = "../MobileVLM_V2-3B" # MobileVLM V2
+model_path = "../MobileLISA" # MobileVLM V2
 image_file = "assets/samples/demo.jpg"
-prompt_str = "Who is the author of this book?\nAnswer the question using a single word or phrase."
+# prompt_str = "Who is the author of this book?\nAnswer the question using a single word or phrase."
+prompt_str = "Can you segment the object in this image?"
 # (or) What is the title of this book?
 # (or) Is this book related to Education & Teaching?
 

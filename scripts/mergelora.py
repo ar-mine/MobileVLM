@@ -34,10 +34,13 @@ def merge_lora(model_base, model_path, save_path):
     # Loading vision-tower weights
     mm_use_im_start_end = getattr(model.config, "mm_use_im_start_end", False)
     mm_use_im_patch_token = getattr(model.config, "mm_use_im_patch_token", True)
+    mm_use_seg = getattr(model.config, "mm_use_seg", True)
     if mm_use_im_patch_token:
         tokenizer.add_tokens([DEFAULT_IMAGE_PATCH_TOKEN], special_tokens=True)
     if mm_use_im_start_end:
         tokenizer.add_tokens([DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN], special_tokens=True)
+    if mm_use_seg:
+        tokenizer.add_tokens("[SEG]")
     model.resize_token_embeddings(len(tokenizer))
     vision_tower = model.get_vision_tower()
     if not vision_tower.is_loaded:
