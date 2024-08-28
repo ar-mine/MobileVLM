@@ -2,7 +2,8 @@ import os
 import sys
 import torch
 import base64
-import datetime
+import numpy as np
+from typing import Union
 import logging
 import requests
 import logging.handlers
@@ -22,17 +23,19 @@ def load_image_from_base64(image):
     return Image.open(BytesIO(base64.b64decode(image)))
 
 
-def expand2square(pil_img, background_color):
-    width, height = pil_img.size
+def expand2square(img: Union[np.ndarray, Image.Image], background_color):
+    if isinstance(img, np.ndarray):
+        img = Image.fromarray(img, mode='RGB')
+    width, height = img.size
     if width == height:
-        return pil_img
+        return img
     elif width > height:
-        result = Image.new(pil_img.mode, (width, width), background_color)
-        result.paste(pil_img, (0, (width - height) // 2))
+        result = Image.new(img.mode, (width, width), background_color)
+        result.paste(img, (0, (width - height) // 2))
         return result
     else:
-        result = Image.new(pil_img.mode, (height, height), background_color)
-        result.paste(pil_img, ((height - width) // 2, 0))
+        result = Image.new(img.mode, (height, height), background_color)
+        result.paste(img, ((height - width) // 2, 0))
         return result
 
 

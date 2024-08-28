@@ -38,21 +38,23 @@ def get_modality_length_grouped_indices(lengths, batch_size, world_size, generat
     # We need to use torch for the random part as a distributed sampler will set the random seed for torch.
     assert all(l != 0 for l in lengths), "Should not have zero length."
     mm_indices, mm_lengths = zip(*[(i, l) for i, l in enumerate(lengths) if l > 0])
-    lang_indices, lang_lengths = zip(*[(i, -l) for i, l in enumerate(lengths) if l < 0])
+    # lang_indices, lang_lengths = zip(*[(i, -l) for i, l in enumerate(lengths) if l < 0])
 
     assert len(mm_indices) > 0, "Should have at least one multimodal sample."
-    assert len(lang_indices) > 0, "Should have at least one language sample."
+    # assert len(lang_indices) > 0, "Should have at least one language sample."
 
     mm_shuffle = [mm_indices[i] for i in get_length_grouped_indices(mm_lengths, batch_size, world_size, generator=None)]
-    lang_shuffle = [lang_indices[i] for i in get_length_grouped_indices(lang_lengths, batch_size, world_size, generator=None)]
+    # lang_shuffle = [lang_indices[i] for i in get_length_grouped_indices(lang_lengths, batch_size, world_size, generator=None)]
     megabatch_size = world_size * batch_size
     mm_megabatches = [mm_shuffle[i : i + megabatch_size] for i in range(0, len(mm_shuffle), megabatch_size)]
-    lang_megabatches = [lang_shuffle[i : i + megabatch_size] for i in range(0, len(lang_shuffle), megabatch_size)]
+    # lang_megabatches = [lang_shuffle[i : i + megabatch_size] for i in range(0, len(lang_shuffle), megabatch_size)]
 
     last_mm = mm_megabatches[-1]
-    last_lang = lang_megabatches[-1]
-    additional_batch = last_mm + last_lang
-    megabatches = mm_megabatches[:-1] + lang_megabatches[:-1]
+    # last_lang = lang_megabatches[-1]
+    # additional_batch = last_mm + last_lang
+    additional_batch = last_mm
+    # megabatches = mm_megabatches[:-1] + lang_megabatches[:-1]
+    megabatches = mm_megabatches[:-1]
     megabatch_indices = torch.randperm(len(megabatches), generator=generator)
     megabatches = [megabatches[i] for i in megabatch_indices]
 
@@ -132,7 +134,7 @@ class VLMTrainer(Trainer):
 
     def create_optimizer(self):
         """
-        Setup the optimizer.
+        Set up the optimizer.
 
         We provide a reasonable default that works well. If you want to use something else, you can pass a tuple in the
         Trainer's init through `optimizers`, or subclass and override this method in a subclass.
@@ -230,7 +232,6 @@ class VLMTrainer(Trainer):
                     logger.info(f"skipped: {skipped/2**20}M params")
 
         return self.optimizer
-
 
     def training_step(self, model, inputs):
         """

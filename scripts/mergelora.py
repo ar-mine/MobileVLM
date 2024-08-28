@@ -5,6 +5,7 @@ from pathlib import Path
 from peft import PeftModel
 from transformers import AutoTokenizer, AutoConfig, BitsAndBytesConfig
 sys.path.append(str(Path(__file__).parent.parent.resolve()))
+from mobilevlm.model.mobilelisa import MobileLisaForCasualLM
 from mobilevlm.model.mobilellama import MobileLlamaForCausalLM
 from mobilevlm.constants import DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 
@@ -52,3 +53,9 @@ def merge_lora(model_base, model_path, save_path):
     tokenizer.save_pretrained(save_path)
 
 merge_lora(sys.argv[1], sys.argv[2], sys.argv[3])
+
+count = 0
+for name, param in model.named_parameters():
+    print(f"Parameter Name: {name} | Shape: {param.shape}")
+    count += 1
+print(count)
