@@ -313,6 +313,7 @@ class MobileLisaForCasualLM(MobileLlamaForCausalLM):
         mask_loss = mask_bce_loss + mask_dice_loss
 
         loss = ce_loss + mask_loss
+        # loss = ce_loss
 
         return {
             "loss": loss,
@@ -341,7 +342,7 @@ class MobileLisaForCasualLM(MobileLlamaForCausalLM):
                 output_hidden_states=True,
                 return_dict_in_generate=True,
             )
-            output_hidden_states = outputs.hidden_states[0][-1]
+            output_hidden_states = outputs.hidden_states[-1][-1]
             output_ids = outputs.sequences
 
             seg_token_mask = output_ids[:, 1:] == self.seg_token_idx

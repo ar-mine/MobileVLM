@@ -6,8 +6,10 @@ import cv2
 import numpy as np
 import torch
 import torch.nn.functional as F
+import transformers
 from transformers import AutoTokenizer, BitsAndBytesConfig, CLIPImageProcessor
 
+from mobilevlm.train.preprocess import ModelArguments
 from mobilevlm.model.mobilelisa import MobileLisaForCasualLM
 from mobilevlm import conversation as conversation_lib
 from mobilevlm.utils import tokenizer_image_token
@@ -16,9 +18,12 @@ from mobilevlm.constants import (DEFAULT_IM_END_TOKEN, DEFAULT_IM_START_TOKEN,
                                  DEFAULT_IMAGE_TOKEN, IMAGE_TOKEN_INDEX)
 
 
+DEBUG = True
+
+
 def parse_args(args):
     parser = argparse.ArgumentParser(description="LISA chat")
-    parser.add_argument("--version", default="xinlai/LISA-13B-llama2-v1")
+    parser.add_argument("--model_path", default="xinlai/LISA-13B-llama2-v1")
     parser.add_argument("--vis_save_path", default="./vis_output", type=str)
     parser.add_argument(
         "--precision",
@@ -39,9 +44,9 @@ def parse_args(args):
     parser.add_argument("--use_mm_start_end", action="store_true", default=False)
     parser.add_argument(
         "--conv_type",
-        default="llava_llama_2",
+        default="v1",
         type=str,
-        choices=["llava_v1", "llava_llama_2"],
+        choices=["v1", "llava_llama_2"],
     )
     return parser.parse_args(args)
 
@@ -64,12 +69,14 @@ def preprocess(
 
 
 def main(args):
+    # Get parameters and prepare output folder
+    # TODO: Keep training parameters same as inference
     args = parse_args(args)
     os.makedirs(args.vis_save_path, exist_ok=True)
 
-    # Create model
+    # Create tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
-        args.version,
+        args.model_path,
         cache_dir=None,
         model_max_length=args.model_max_length,
         padding_side="right",
@@ -78,13 +85,12 @@ def main(args):
     tokenizer.pad_token = tokenizer.unk_token
     args.seg_token_idx = tokenizer("[SEG]", add_special_tokens=False).input_ids[0]
 
-
+    # Load parameters for different precision
     torch_dtype = torch.float32
     if args.precision == "bf16":
         torch_dtype = torch.bfloat16
     elif args.precision == "fp16":
         torch_dtype = torch.half
-
     kwargs = {"torch_dtype": torch_dtype}
     if args.load_in_4bit:
         kwargs.update(
@@ -110,8 +116,10 @@ def main(args):
                 ),
             }
         )
+
+    # Load the main model
     model = MobileLisaForCasualLM.from_pretrained(
-        args.version,
+        args.model_path,
         low_cpu_mem_usage=True,
         vision_tower=args.vision_tower,
         seg_token_idx=args.seg_token_idx,
@@ -123,11 +131,13 @@ def main(args):
     model.config.eos_token_id = tokenizer.eos_token_id
     model.config.bos_token_id = tokenizer.bos_token_id
     model.config.pad_token_id = tokenizer.pad_token_id
-
+    # TODO: Make sure the CLIP module match
     model.get_model().initialize_vision_modules(model.get_model().config)
+    # TODO: remove unused segment
     vision_tower = model.get_model().get_vision_tower()
     vision_tower.to(dtype=torch_dtype)
 
+    # Transfer model to target precision
     if args.precision == "bf16":
         model = model.bfloat16().cuda()
     elif (
