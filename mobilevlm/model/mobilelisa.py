@@ -342,7 +342,7 @@ class MobileLisaForCasualLM(MobileLlamaForCausalLM):
                 output_hidden_states=True,
                 return_dict_in_generate=True,
             )
-            output_hidden_states = outputs.hidden_states[-1][-1]
+            output_hidden_states = outputs.hidden_states[-1]
             output_ids = outputs.sequences
 
             seg_token_mask = output_ids[:, 1:] == self.seg_token_idx

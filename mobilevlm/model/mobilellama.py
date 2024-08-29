@@ -83,11 +83,17 @@ class MobileLlamaForCausalLM(LlamaForCausalLM, MobileVLMMetaForCausalLM):
             output = (logits,) + outputs[1:]
             return (loss,) + output if loss is not None else output
 
+        # Make judgement to reduce parameters needed while training
+        if self.training:
+            output_hidden_states = outputs.hidden_states
+        else:
+            output_hidden_states = hidden_states
+
         return CausalLMOutputWithPast(
             loss=loss,
             logits=logits,
             past_key_values=outputs.past_key_values,
-            hidden_states=outputs.hidden_states,
+            hidden_states=output_hidden_states,
             attentions=outputs.attentions,
         )
 
