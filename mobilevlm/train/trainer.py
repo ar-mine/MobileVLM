@@ -1,6 +1,6 @@
 import torch
 from transformers import Trainer
-from typing import List, Optional
+from typing import Dict, List, Optional, Union
 from torch.utils.data import Sampler
 from transformers.trainer import (ALL_LAYERNORM_LAYERS, ShardedDDPOption,
                                   get_parameter_names, has_length,
@@ -259,7 +259,7 @@ class VLMTrainer(Trainer):
             return loss_mb.reduce_mean().detach().to(self.args.device)
 
         with self.compute_loss_context_manager():
-            loss = self.compute_loss(model, inputs)
+            loss, outputs = self.compute_loss(model, inputs, return_outputs=True)
 
         if self.args.n_gpu > 1:
             loss = loss.mean()
@@ -272,4 +272,5 @@ class VLMTrainer(Trainer):
         else:
             self.accelerator.backward(loss)
 
+        self.log({k: v.item() for k, v in outputs.items()})
         return loss.detach() / self.args.gradient_accumulation_steps

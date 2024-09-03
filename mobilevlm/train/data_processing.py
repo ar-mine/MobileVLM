@@ -10,6 +10,38 @@ import numpy as np
 
 from mobilevlm.constants import SHORT_QUESTION_LIST, LONG_QUESTION_LIST, ANSWER_LIST
 
+ade20k_classes = [
+    "wall", "building", "sky", "floor", "tree", "ceiling", "road",
+    "bed", "windowpane", "grass", "cabinet", "sidewalk",
+    "person", "earth", "door", "table", "mountain", "plant",
+    "curtain", "chair", "car", "water", "painting", "sofa",
+    "shelf", "house", "sea", "mirror", "rug", "field", "armchair",
+    "seat", "fence", "desk", "rock", "wardrobe", "lamp",
+    "bathtub", "railing", "cushion", "base", "box", "column",
+    "signboard", "chest of drawers", "counter", "sand", "sink",
+    "skyscraper", "fireplace", "refrigerator", "grandstand",
+    "path", "stairs", "runway", "case", "pool table", "pillow",
+    "screen door", "stairway", "river", "bridge", "bookcase",
+    "blind", "coffee table", "toilet", "flower", "book", "hill",
+    "bench", "countertop", "stove", "palm", "kitchen island",
+    "computer", "swivel chair", "boat", "bar", "arcade machine",
+    "hovel", "bus", "towel", "light", "truck", "tower",
+    "chandelier", "awning", "streetlight", "booth",
+    "television receiver", "airplane", "dirt track", "apparel",
+    "pole", "land", "bannister", "escalator", "ottoman", "bottle",
+    "buffet", "poster", "stage", "van", "ship", "fountain",
+    "conveyer belt", "canopy", "washer", "plaything",
+    "swimming pool", "stool", "barrel", "basket", "waterfall",
+    "tent", "bag", "minibike", "cradle", "oven", "ball", "food",
+    "step", "tank", "trade name", "microwave", "pot", "animal",
+    "bicycle", "lake", "dishwasher", "screen", "blanket",
+    "sculpture", "hood", "sconce", "vase", "traffic light",
+    "tray", "ashcan", "fan", "pier", "crt screen", "plate",
+    "monitor", "bulletin board", "shower", "radiator", "glass",
+    "clock", "flag"
+]
+
+
 def get_mask_from_json(json_path: str,
                        img: Union[Image.Image, np.ndarray],
                        ) -> np.ndarray:
@@ -101,32 +133,76 @@ def meta_info_retrieve(sample: Dict,
     sample['conversations'] = conversations
     sample['sampled_indices'] = sampled_indices
 
+def seg_add_ref(sample: Dict,
+                num_classes_per_sample: int = 1,
+                data_type = "ADE"):
+    image_path, label_path = sample['image'], sample['annotation']
+    label = cv2.imread(label_path, 0)
+    # Process annotation
+    if data_type == "ADE":
+        label[label == 0] = 255
+        label -= 1
+        label[label == 254] = 255
+    unique_label = np.unique(label).tolist()
+    if 255 in unique_label:
+        unique_label.remove(255)
+    # Random select label idx
+    if len(unique_label) > num_classes_per_sample:
+        unique_label = random.sample(unique_label, num_classes_per_sample)
+
+    questions = []
+    answers = []
+    # Generate grounding sentence
+    for label_idx in unique_label:
+        if data_type == "ADE":
+            class_name = ade20k_classes[label_idx]
+        else:
+            raise NotImplementedError(f"data_type {data_type} not implemented")
+
+        question_template = random.choice(SHORT_QUESTION_LIST)
+        q = {'from': 'human', 'value': question_template.format(class_name=class_name.lower())}
+        questions.append(q)
+        a = {'from': 'gpt', 'value': random.choice(ANSWER_LIST)}
+        answers.append(a)
+
+    # Combine Q&A
+    conversations = []
+    for question, answer in zip(questions, answers):
+        conversations.extend([question, answer])
+
+    sample['conversations'] = conversations
+    sample['sampled_indices'] = unique_label
+
+def ADE_preprocess(base_image_dir):
+    image_ids = sorted(
+        os.listdir(os.path.join(base_image_dir, "images", "training"))
+    )
+    ade20k_image_ids = []
+    for x in image_ids:
+        if x.endswith(".jpg"):
+            ade20k_image_ids.append(x[:-4])
+    ade20k_images = []
+    for image_id in ade20k_image_ids:  # self.descriptions:
+        ade20k_images.append(
+            os.path.join(
+                base_image_dir,
+                "images",
+                "training",
+                "{}.jpg".format(image_id),
+            )
+        )
+    ade20k_labels = [
+        x.replace(".jpg", ".png").replace("images", "annotations")
+        for x in ade20k_images
+    ]
+    print("ade20k: ", len(ade20k_images))
+
+    data_list = []
+    for image, label in zip(ade20k_images, ade20k_labels):
+        data_list.append({"image": image, "annotation": label})
+    with open(os.path.join(base_image_dir, "training.json"), "w") as f:
+        json.dump(data_list, f)
+
 
 if __name__ == "__main__":
-    data_dir = "./train"
-    vis_dir = "./vis"
-
-    if not os.path.exists(vis_dir):
-        os.makedirs(vis_dir)
-
-    json_path_list = sorted(glob.glob(data_dir + "/*.json"))
-    for json_path in json_path_list:
-        img_path = json_path.replace(".json", ".jpg")
-        img = cv2.imread(img_path)[:, :, ::-1]
-
-        # In generated mask, value 1 denotes valid target region, and value 255 stands for region ignored during evaluaiton.
-        mask, comments, is_sentence = get_mask_from_json(json_path, img)
-
-        ## visualization. Green for target, and red for ignore.
-        valid_mask = (mask == 1).astype(np.float32)[:, :, None]
-        ignore_mask = (mask == 255).astype(np.float32)[:, :, None]
-        vis_img = img * (1 - valid_mask) * (1 - ignore_mask) + (
-            (np.array([0, 255, 0]) * 0.6 + img * 0.4) * valid_mask
-            + (np.array([255, 0, 0]) * 0.6 + img * 0.4) * ignore_mask
-        )
-        vis_img = np.concatenate([img, vis_img], 1)
-        vis_path = os.path.join(
-            vis_dir, json_path.split("/")[-1].replace(".json", ".jpg")
-        )
-        cv2.imwrite(vis_path, vis_img[:, :, ::-1])
-        print("Visualization has been saved to: ", vis_path)
+    ADE_preprocess("/media/armine/6E94666294662CB1/A_Content/Datasets/ADEChallengeData2016")

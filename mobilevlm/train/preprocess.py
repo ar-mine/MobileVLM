@@ -1,4 +1,6 @@
 import copy
+from email.policy import default
+
 import torch
 from typing import Dict, Optional, Sequence
 from dataclasses import dataclass, field
@@ -34,6 +36,8 @@ class ModelArguments:
 @dataclass
 class DataArguments:
     data_path: str = field(default=None, metadata={"help": "Path to the training data."})
+    data_type: str = field(default="ADE", metadata={"choices": "ADE | ReasonSeg"})
+
     lazy_preprocess: bool = False
     is_multimodal: bool = False
     image_folder: Optional[str] = field(default=None)
@@ -271,9 +275,13 @@ def preprocess_v1(
         conversations.append(conv.get_prompt())
 
     # Tokenize conversations
-
     if has_image:
-        input_ids = torch.stack([tokenizer_image_token(prompt, tokenizer, return_tensors='pt') for prompt in conversations], dim=0)
+        input_ids = [tokenizer_image_token(prompt, tokenizer, return_tensors='pt') for prompt in conversations]
+        # if len(input_ids) > 1:
+        #     max_length = max([l.shape[0] for l in input_ids])
+        #     for idx, input_id in enumerate(input_ids):
+        #         input_ids[idx] = torch.hstack((input_id, torch.ones(max_length - input_id.shape[0]) * tokenizer.pad_token_id))
+        input_ids = torch.stack(input_ids, dim=0)
     else:
         input_ids = tokenizer(
             conversations,

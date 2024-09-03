@@ -9,7 +9,7 @@ import torch.nn.functional as F
 import transformers
 from transformers import AutoTokenizer, BitsAndBytesConfig, CLIPImageProcessor
 
-from mobilevlm.train.preprocess import ModelArguments
+from mobilevlm.train.preprocess import preprocess_sam
 from mobilevlm.model.mobilelisa import MobileLisaForCasualLM
 from mobilevlm import conversation as conversation_lib
 from mobilevlm.utils import tokenizer_image_token
@@ -49,23 +49,6 @@ def parse_args(args):
         choices=["v1", "llava_llama_2"],
     )
     return parser.parse_args(args)
-
-
-def preprocess(
-    x,
-    pixel_mean=torch.Tensor([123.675, 116.28, 103.53]).view(-1, 1, 1),
-    pixel_std=torch.Tensor([58.395, 57.12, 57.375]).view(-1, 1, 1),
-    img_size=1024,
-) -> torch.Tensor:
-    """Normalize pixel values and pad to a square input."""
-    # Normalize colors
-    x = (x - pixel_mean) / pixel_std
-    # Pad
-    h, w = x.shape[-2:]
-    padh = img_size - h
-    padw = img_size - w
-    x = F.pad(x, (0, padw, 0, padh))
-    return x
 
 
 def main(args):
@@ -209,7 +192,7 @@ def main(args):
         resize_list = [image.shape[:2]]
 
         image = (
-            preprocess(torch.from_numpy(image).permute(2, 0, 1).contiguous())
+            preprocess_sam(torch.from_numpy(image).permute(2, 0, 1).contiguous())
             .unsqueeze(0)
             .cuda()
         )
