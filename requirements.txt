@@ -1,5 +1,5 @@
 deepspeed==0.9.5
-transformers==4.38.0
+transformers==4.33.1
 tokenizers==0.13.3
 sentencepiece==0.1.99
 shortuuid==1.0.11
