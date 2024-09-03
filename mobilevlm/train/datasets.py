@@ -258,6 +258,10 @@ class SegDataset(Dataset):
 
         # Get sampled masks
         masks = cv2.imread(sources['annotation'], 0)
+        if self.data_type == "ADE":
+            masks[masks == 0] = 255
+            masks -= 1
+            masks[masks == 254] = 255
         sampled_indices = sources['sampled_indices']
         sampled_masks = [
             (masks == label_idx).astype(np.float32) for label_idx in range(len(sampled_indices))
