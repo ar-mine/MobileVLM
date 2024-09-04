@@ -50,6 +50,20 @@ class DataArguments:
 @dataclass
 class TrainingArguments(transformers.TrainingArguments):
     train_mask_decoder: bool = field(default=False)
+
+    lora_enable: bool = field(default=False)
+    lora_r: int = field(default=8)
+    lora_alpha: int = field(default=16)
+    lora_dropout: float = field(default=0.05)
+    lora_weight_path: str = field(default="")
+    lora_bias: str = field(default="none")
+
+    wandb_enable: bool = field(default=False)
+
+    ce_loss_weight: float = field(default=1.0)
+    bce_loss_weight: float = field(default=2.0)
+    dice_loss_weight: float = field(default=0.5)
+
     cache_dir: Optional[str] = field(default=None)
     optim: str = field(default="adamw_torch")
     remove_unused_columns: bool = field(default=False)
@@ -74,12 +88,7 @@ class TrainingArguments(transformers.TrainingArguments):
         default=16,
         metadata={"help": "How many bits to use."}
     )
-    lora_enable: bool = False
-    lora_r: int = 64
-    lora_alpha: int = 16
-    lora_dropout: float = 0.05
-    lora_weight_path: str = ""
-    lora_bias: str = "none"
+
     mm_projector_lr: Optional[float] = None
     group_by_modality_length: bool = field(default=False)
 

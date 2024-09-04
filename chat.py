@@ -110,6 +110,8 @@ def main(args):
         inference=True,
         **kwargs
     )
+    state_dict = torch.load(os.path.join(args.model_path, "pytorch_model.bin"), map_location="cpu")
+    model.load_state_dict(state_dict, strict=True)
 
     model.config.eos_token_id = tokenizer.eos_token_id
     model.config.bos_token_id = tokenizer.bos_token_id

@@ -22,8 +22,8 @@ python mobilevlm/train/train_mem.py \
         --group_by_modality_length True \
         --bf16 True \
         --output_dir ${OUTPUT_DIR_FT} \
-        --num_train_epochs 2 \
-        --per_device_train_batch_size 8 \
+        --num_train_epochs 1 \
+        --per_device_train_batch_size 16 \
         --per_device_eval_batch_size 1 \
         --gradient_accumulation_steps 1 \
         --evaluation_strategy "no" \
@@ -43,4 +43,5 @@ python mobilevlm/train/train_mem.py \
         --segment_label True \
         --segment_encoder_path "../sam_vit_h_4b8939.pth" \
         --train_mask_decoder true \
+        --wandb_enable true\
         2>&1 | tee -a ${OUTPUT_DIR_FT}/log.txt

@@ -10,6 +10,10 @@ if is_sagemaker_mp_enabled():
     from transformers.trainer_pt_utils import smp_forward_backward
 if is_apex_available():
     from apex import amp
+try:
+    import wandb
+except ImportError:
+    print("Wandb is not installed, ignored.")
 
 
 def split_to_even_chunks(indices, lengths, num_chunks):
@@ -272,5 +276,8 @@ class VLMTrainer(Trainer):
         else:
             self.accelerator.backward(loss)
 
-        self.log({k: v.item() for k, v in outputs.items()})
+        log_output = {k: v.item() for k, v in outputs.items()}
+        self.log(log_output)
+        if self.args.wandb_enable:
+            wandb.log(log_output)
         return loss.detach() / self.args.gradient_accumulation_steps

@@ -1,0 +1,253 @@
+{
+    "os": "Linux-5.15.0-117-generic-x86_64-with-glibc2.31",
+    "python": "3.10.14",
+    "heartbeatAt": "2024-09-03T17:52:31.689659",
+    "startedAt": "2024-09-03T17:52:31.054143",
+    "docker": null,
+    "cuda": null,
+    "args": [
+        "--lora_enable",
+        "True",
+        "--lora_r",
+        "8",
+        "--lora_alpha",
+        "16",
+        "--learning_rate",
+        "3e-4",
+        "--weight_decay",
+        "0.",
+        "--model_name_or_path",
+        "../MobileVLM_V2-3B",
+        "--version",
+        "v1",
+        "--data_path",
+        "/media/armine/6E94666294662CB1/A_Content/Datasets/ADEChallengeData2016",
+        "--image_folder",
+        "data/finetune_data",
+        "--vision_tower",
+        "openai/clip-vit-large-patch14-336",
+        "--vision_tower_type",
+        "clip",
+        "--mm_projector_type",
+        "ldpnetv2",
+        "--mm_vision_select_layer",
+        "-2",
+        "--mm_use_im_start_end",
+        "False",
+        "--mm_use_im_patch_token",
+        "False",
+        "--mm_use_seg",
+        "True",
+        "--image_aspect_ratio",
+        "pad",
+        "--group_by_modality_length",
+        "True",
+        "--bf16",
+        "True",
+        "--output_dir",
+        "results/mobilevlm_v2-2.finetune-lora",
+        "--num_train_epochs",
+        "1",
+        "--per_device_train_batch_size",
+        "16",
+        "--per_device_eval_batch_size",
+        "1",
+        "--gradient_accumulation_steps",
+        "1",
+        "--evaluation_strategy",
+        "no",
+        "--save_strategy",
+        "steps",
+        "--save_steps",
+        "50000",
+        "--save_total_limit",
+        "1",
+        "--warmup_ratio",
+        "0.03",
+        "--lr_scheduler_type",
+        "cosine",
+        "--logging_steps",
+        "1",
+        "--log_level",
+        "info",
+        "--tf32",
+        "True",
+        "--model_max_length",
+        "2048",
+        "--gradient_checkpointing",
+        "True",
+        "--dataloader_num_workers",
+        "8",
+        "--lazy_preprocess",
+        "True",
+        "--report_to",
+        "none",
+        "--segment_label",
+        "True",
+        "--segment_encoder_path",
+        "../sam_vit_h_4b8939.pth",
+        "--train_mask_decoder",
+        "true",
+        "--wandb_enable",
+        "true"
+    ],
+    "state": "running",
+    "program": "/home/armine/MobileLISA_ws/MobileVLM/mobilevlm/train/train_mem.py",
+    "codePathLocal": "mobilevlm/train/train_mem.py",
+    "codePath": "mobilevlm/train/train_mem.py",
+    "git": {
+        "remote": "git@github.com:ar-mine/MobileVLM.git",
+        "commit": "125d2650efd41d876bfbd9fce9fab78d3f0f34d9"
+    },
+    "email": "934218777@qq.com",
+    "root": "/home/armine/MobileLISA_ws/MobileVLM",
+    "host": "automan-desktop",
+    "username": "armine",
+    "executable": "/home/armine/softwares/miniconda3/envs/mobilevlm/bin/python",
+    "cpu_count": 16,
+    "cpu_count_logical": 24,
+    "cpu_freq": {
+        "current": 3102.3446666666664,
+        "min": 800.0,
+        "max": 4716.666666666667
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 5100.0
+        },
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 5100.0
+        },
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 5100.0
+        },
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 5100.0
+        },
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 5100.0
+        },
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 5100.0
+        },
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 5100.0
+        },
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 5100.0
+        },
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 5200.0
+        },
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 5200.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 5200.0
+        },
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 5200.0
+        },
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 5100.0
+        },
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 5100.0
+        },
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 5100.0
+        },
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 5100.0
+        },
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 3900.0
+        },
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 3900.0
+        },
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 3900.0
+        },
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 3900.0
+        },
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 3900.0
+        },
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 3900.0
+        },
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 3900.0
+        },
+        {
+            "current": 3200.0,
+            "min": 800.0,
+            "max": 3900.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 411.82908630371094,
+            "used": 292.7426071166992
+        }
+    },
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce RTX 4090",
+            "memory_total": 25757220864
+        }
+    ],
+    "memory": {
+        "total": 31.153427124023438
+    }
+}

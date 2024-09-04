@@ -11,6 +11,7 @@ from mobilevlm.train.preprocess import (ModelArguments, DataArguments, TrainingA
 from mobilevlm.train.trainer import VLMTrainer
 from mobilevlm.train.datasets import make_supervised_data_module
 from mobilevlm import conversation as conversation_lib
+from mobilevlm.vis_utils import save_model_structure
 from mobilevlm.model.mobilellama import MobileLlamaForCausalLM
 from mobilevlm.model.mobilelisa import MobileLisaForCasualLM
 
@@ -183,12 +184,34 @@ def train():
 
     parser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+
+    # Whether using wandb to visualize
+    wandb_enable = training_args.wandb_enable
+    if wandb_enable:
+        import wandb
+        # start a new wandb run to track this script
+        wandb.init(
+            # set the wandb project where this run will be logged
+            project="mobileLisa",
+            # track hyperparameters and run metadata
+            config={
+                # "learning_rate": 0.02,
+                # "architecture": "CNN",
+                # "dataset": "CIFAR-100",
+                "epochs": training_args.num_train_epochs,
+            }
+        )
+
     local_rank = training_args.local_rank
     compute_dtype = (torch.float16 if training_args.fp16 else (torch.bfloat16 if training_args.bf16 else torch.float32))
 
     bnb_model_from_pretrained_args = {
         "train_mask_decoder": training_args.train_mask_decoder,
         "cache_dir": training_args.cache_dir,
+        "ce_loss_weight": training_args.ce_loss_weight,
+        "bce_loss_weight": training_args.bce_loss_weight,
+        "dice_loss_weight": training_args.dice_loss_weight,
+
         "segment_encoder_path": model_args.segment_encoder_path,
         "segment_output_dim": model_args.segment_output_dim,
     }
@@ -219,7 +242,7 @@ def train():
             # Whether adding SAM encoder to finish segmentation task
             if model_args.segment_encoder_path is not None:
                 model = MobileLisaForCasualLM.from_pretrained(
-                    model_args.model_name_or_path,
+                    pretrained_model_name_or_path=model_args.model_name_or_path,
                     **bnb_model_from_pretrained_args
                 )
             else:
@@ -364,6 +387,7 @@ def train():
                         module = module.to(torch.bfloat16)
 
     # make text_hidden_fcs, mask_decoder, lm_head, embed_tokens trainable
+    non_lora_trainable_parameters = []
     for n, p in model.named_parameters():
         if any(
                 [
@@ -373,6 +397,12 @@ def train():
         ):
             print("n: ", n, "p.shape: ", p.shape)
             p.requires_grad = True
+            non_lora_trainable_parameters.append(n)
+    print(f"num_non_lora_trainable_parameters: {len(non_lora_trainable_parameters)}")
+
+    # Ensure model can be trained
+    save_model_structure(model)
+
 
     data_module = make_supervised_data_module(tokenizer=tokenizer, data_args=data_args)
     trainer = VLMTrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
@@ -386,17 +416,20 @@ def train():
     model.config.use_cache = True
 
     if training_args.lora_enable:
-        state_dict = get_peft_state_maybe_zero_3(
+        '''state_dict = get_peft_state_maybe_zero_3(
             model.named_parameters(), training_args.lora_bias
         )
         non_lora_state_dict = get_peft_state_non_lora_maybe_zero_3(
             model.named_parameters()
         )
+        non_lora_state_dict_names = [k for k in non_lora_state_dict.keys()]
+        print(f"Save {len(non_lora_state_dict)} non-lora parameters!")'''
         if training_args.local_rank == 0 or training_args.local_rank == -1:
             model.config.save_pretrained(training_args.output_dir)
-            model.save_pretrained(training_args.output_dir, state_dict=state_dict)
-            print('non_lora_trainable...', non_lora_state_dict.keys())
-            torch.save(non_lora_state_dict, os.path.join(training_args.output_dir, 'non_lora_trainables.bin'))
+            #model.save_pretrained(training_args.output_dir, state_dict=state_dict)
+            model.save_pretrained(training_args.output_dir)
+            #print('non_lora_trainable...', non_lora_state_dict.keys())
+            torch.save(model.state_dict(), os.path.join(training_args.output_dir, 'non_lora_trainables.bin'))
     else:
         safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir)
 

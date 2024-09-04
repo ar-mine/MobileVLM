@@ -144,23 +144,23 @@ def main(args):
     model.resize_token_embeddings(len(tokenizer))
 
     state_dict = {}
-    adapter_state_dict = torch.load(os.path.join(args.weight, "adapter_model.bin"), map_location="cpu")
+    '''adapter_state_dict = torch.load(os.path.join(args.weight, "adapter_model.bin"), map_location="cpu")
     for k in list(adapter_state_dict.keys()):
         if 'lora_A' in k:
             adapter_state_dict[k.replace('lora_A.weight', 'lora_A.default.weight')] = adapter_state_dict.pop(k)
         if 'lora_B' in k:
             adapter_state_dict[k.replace('lora_B.weight', 'lora_B.default.weight')] = adapter_state_dict.pop(k)
-    state_dict.update(adapter_state_dict)
+    state_dict.update(adapter_state_dict)'''
     non_lora_state_dict = torch.load(os.path.join(args.weight, "non_lora_trainables.bin"), map_location="cpu")
     state_dict.update(non_lora_state_dict)
-    model.load_state_dict(state_dict, strict=False)
+    model.load_state_dict(state_dict, strict=True)
 
     model = model.merge_and_unload()
     state_dict = {}
-    for k, v in model.state_dict().items():
-        if "vision_tower" not in k:
-            state_dict[k] = v
-    model.save_pretrained(args.save_path, state_dict=state_dict)
+    #for k, v in model.state_dict().items():
+        #if "vision_tower" not in k:
+            #state_dict[k] = v
+    model.save_pretrained(args.save_path, state_dict=model.state_dict())
     tokenizer.save_pretrained(args.save_path)
 
 

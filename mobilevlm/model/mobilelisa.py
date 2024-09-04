@@ -121,9 +121,9 @@ class MobileLisaForCasualLM(MobileLlamaForCausalLM):
 
         # TODO: Modify to get value from outer
         self.seg_token_idx = 32000
-        self.ce_loss_weight = 1.0
-        self.dice_loss_weight = 0.5
-        self.bce_loss_weight = 2.0
+        self.ce_loss_weight = kwargs.pop("ce_loss_weight", 0)
+        self.dice_loss_weight = kwargs.pop("dice_loss_weight", 0)
+        self.bce_loss_weight = kwargs.pop("bce_loss_weight", 0)
 
         self.model = MobileLisaModel(config, **kwargs)
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
