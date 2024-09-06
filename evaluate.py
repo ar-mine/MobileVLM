@@ -5,16 +5,16 @@ import sys
 import cv2
 import numpy as np
 import torch
+import json
 from transformers import AutoTokenizer, BitsAndBytesConfig, CLIPImageProcessor
 
-from mobilevlm.train.preprocess import preprocess_sam
-from mobilevlm.model.mobilelisa import MobileLisaForCasualLM
+from mobilevlm.train.preprocess import preprocess_sam, preprocess_ade
+from mobilevlm.model.mobilelisa import MobileLisaForCasualLM, sigmoid_ce_loss
 from mobilevlm import conversation as conversation_lib
 from mobilevlm.utils import tokenizer_image_token
 from mobilevlm.model.segment_anything.utils.transforms import ResizeLongestSide
 from mobilevlm.constants import (DEFAULT_IM_END_TOKEN, DEFAULT_IM_START_TOKEN,
-                                 DEFAULT_IMAGE_TOKEN, IMAGE_TOKEN_INDEX)
-
+                                 DEFAULT_IMAGE_TOKEN, IMAGE_TOKEN_INDEX, ADE20K_CLASSES)
 
 DEBUG = True
 
@@ -46,6 +46,8 @@ def parse_args(args):
         type=str,
         choices=["v1", "llava_llama_2"],
     )
+    parser.add_argument("--image_path", type=str)
+    parser.add_argument("--gt_path", type=str)
     return parser.parse_args(args)
 
 
@@ -53,7 +55,6 @@ def main(args):
     # Get parameters and prepare output folder
     # TODO: Keep training parameters same as inference
     args = parse_args(args)
-    os.makedirs(args.vis_save_path, exist_ok=True)
 
     # Create tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
@@ -144,17 +145,28 @@ def main(args):
 
     clip_image_processor = CLIPImageProcessor.from_pretrained(model.config.vision_tower)
     transform = ResizeLongestSide(args.image_size)
+    state_dict = torch.load(os.path.join(args.model_path, "pytorch_model.bin"), map_location="cpu")
+    model.load_state_dict(state_dict, strict=True)
 
-    #state_dict = torch.load(os.path.join(args.model_path, "pytorch_model.bin"), map_location="cpu")
-    #model.load_state_dict(state_dict, strict=True)
     model.eval()
 
-    while True:
+    with open('/media/armine/6E94666294662CB1/A_Content/Datasets/ADEChallengeData2016/sample.json', 'r') as f:
+        ori_data = json.load(f)
+
+    for data in ori_data:
+        image_path = data["image"]
+        image_np = cv2.imread(image_path)
+        image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
+        gt_path = data["annotation"]
+        gt_np = preprocess_ade(cv2.imread(gt_path, 0))
+
+        prompt = data["conversations"][0]["value"]
+        gt_idx = data["sampled_indices"][0]
+        class_name = ADE20K_CLASSES[gt_idx]
         conv = conversation_lib.conv_templates[args.conv_type].copy()
         conv.messages = []
 
-        prompt = input("Please input your prompt: ")
-        prompt = DEFAULT_IMAGE_TOKEN + "\n" + prompt
+        #prompt = DEFAULT_IMAGE_TOKEN + "\n" + f"Can you segment the {class_name} in this image?"
         if args.use_mm_start_end:
             replace_token = (
                 DEFAULT_IM_START_TOKEN + DEFAULT_IMAGE_TOKEN + DEFAULT_IM_END_TOKEN
@@ -165,13 +177,6 @@ def main(args):
         conv.append_message(conv.roles[1], "")
         prompt = conv.get_prompt()
 
-        image_path = input("Please input the image path: ")
-        if not os.path.exists(image_path):
-            print("File not found in {}".format(image_path))
-            continue
-
-        image_np = cv2.imread(image_path)
-        image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
         original_size_list = [image_np.shape[:2]]
 
         image_clip = (
@@ -188,63 +193,45 @@ def main(args):
         else:
             image_clip = image_clip.float()
 
-        image_sam = transform.apply_image(image_np)
-        resize_list = [image_sam.shape[:2]]
+        image = transform.apply_image(image_np)
+        resize_list = [image.shape[:2]]
 
-        image_sam = (
-            preprocess_sam(torch.from_numpy(image_sam).permute(2, 0, 1).contiguous())
+        image = (
+            preprocess_sam(torch.from_numpy(image).permute(2, 0, 1).contiguous())
             .unsqueeze(0)
             .cuda()
         )
         if args.precision == "bf16":
-            image_sam = image_sam.bfloat16()
+            image = image.bfloat16()
         elif args.precision == "fp16":
-            image_sam = image_sam.half()
+            image = image.half()
         else:
-            image_sam = image_sam.float()
+            image = image.float()
 
         input_ids = tokenizer_image_token(prompt, tokenizer, return_tensors="pt")
         input_ids = input_ids.unsqueeze(0).cuda()
+
         output_ids, pred_masks = model.evaluate(
-            images_clip=image_clip,
-            images_sam=image_sam,
-            input_ids=input_ids,
-            resize_list=resize_list,
-            original_size_list=original_size_list,
+            image_clip,
+            image,
+            input_ids,
+            resize_list,
+            original_size_list,
             max_new_tokens=512,
             tokenizer=tokenizer,
         )
         output_ids = output_ids[0][output_ids[0] != IMAGE_TOKEN_INDEX]
 
-        text_output = tokenizer.decode(output_ids, skip_special_tokens=False)
-        text_output = text_output.replace("\n", "").replace("  ", " ")
-        print("text_output: ", text_output)
 
-        for i, pred_mask in enumerate(pred_masks):
-            if pred_mask.shape[0] == 0:
-                continue
+        assert len(pred_masks) == 1
 
-            pred_mask = pred_mask.detach().cpu().numpy()[0]
-            pred_mask = pred_mask > 0
+        pred_mask = pred_masks[0].detach().cpu().numpy()[0]
+        #pred_mask = pred_mask > 0
 
-            save_path = "{}/{}_mask_{}.jpg".format(
-                args.vis_save_path, image_path.split("/")[-1].split(".")[0], i
-            )
-            cv2.imwrite(save_path, pred_mask * 100)
-            print("{} has been saved.".format(save_path))
+        gt_mask = (gt_np == gt_idx)
+        loss = sigmoid_ce_loss(torch.Tensor([pred_mask]), torch.Tensor([gt_mask]), num_masks=1)
 
-            save_path = "{}/{}_masked_img_{}.jpg".format(
-                args.vis_save_path, image_path.split("/")[-1].split(".")[0], i
-            )
-            save_img = image_np.copy()
-            save_img[pred_mask] = (
-                image_np * 0.5
-                + pred_mask[:, :, None].astype(np.uint8) * np.array([255, 0, 0]) * 0.5
-            )[pred_mask]
-            save_img = cv2.cvtColor(save_img, cv2.COLOR_RGB2BGR)
-            cv2.imwrite(save_path, save_img)
-            print("{} has been saved.".format(save_path))
-
+        print(f"Testing {class_name}: {loss.item()}")
 
 if __name__ == "__main__":
     main(sys.argv[1:])

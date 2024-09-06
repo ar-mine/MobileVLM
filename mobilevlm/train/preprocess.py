@@ -37,6 +37,7 @@ class ModelArguments:
 class DataArguments:
     data_path: str = field(default=None, metadata={"help": "Path to the training data."})
     data_type: str = field(default="ADE", metadata={"choices": "ADE | ReasonSeg"})
+    mini_batch: bool = field(default=False, metadata={"help": "Whether to use mini-batch or not."})
 
     lazy_preprocess: bool = False
     is_multimodal: bool = False
@@ -500,3 +501,9 @@ def preprocess_sam(x: torch.Tensor,
     pad_w = img_size - w
     x = F.pad(x, (0, pad_w, 0, pad_h))
     return x
+
+def preprocess_ade(gt):
+    gt[gt == 0] = 255
+    gt -= 1
+    gt[gt == 254] = 255
+    return gt

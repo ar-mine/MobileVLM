@@ -129,7 +129,7 @@ class MobileLisaForCasualLM(MobileLlamaForCausalLM):
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
         self.post_init()  # Initialize weights and apply final processing
 
-        self.mm_projector_output_dim = self.get_model().mm_projector
+        #self.mm_projector_output_dim = self.get_model().mm_projector
 
     def get_visual_embs(self, pixel_values: torch.FloatTensor):
         with torch.no_grad():
@@ -166,7 +166,8 @@ class MobileLisaForCasualLM(MobileLlamaForCausalLM):
         image_embeddings = self.get_visual_embs(images_sam) # [1, 3, 1024, 1024] -> [1, 256, 64, 64]
         batch_size = image_embeddings.shape[0]
         # Judge whether the input shape is valid
-        assert batch_size == len(offset) - 1
+        if not inference:
+            assert batch_size == len(offset) - 1
 
         # TODO: Why not from 0 but 1
         seg_token_mask = input_ids[:, 1:] == self.seg_token_idx # 1, 95
@@ -330,7 +331,7 @@ class MobileLisaForCasualLM(MobileLlamaForCausalLM):
     def evaluate(
         self,
         images_clip,
-        images,
+        images_sam,
         input_ids,
         resize_list,
         original_size_list,
@@ -379,7 +380,7 @@ class MobileLisaForCasualLM(MobileLlamaForCausalLM):
                 pred_embeddings_.append(pred_embeddings[start_i:end_i])
             pred_embeddings = pred_embeddings_
 
-            image_embeddings = self.get_visual_embs(images)
+            image_embeddings = self.get_visual_embs(images_sam)
 
             multimask_output = False
             pred_masks = []

@@ -227,12 +227,15 @@ class SegDataset(Dataset):
                  tokenizer: transformers.PreTrainedTokenizer,
                  data_args: DataArguments,
                  image_processor = None,
-                 image_size: int = 1024,):
+                 image_size: int = 1024):
         super(SegDataset, self).__init__()
         # Load dataset
         self.data_type = data_args.data_type
         self.data_args = data_args
-        data_path = os.path.join(data_args.data_path, "training2.json")
+        if self.data_args.mini_batch:
+            data_path = os.path.join(data_args.data_path, "sample.json")
+        else:
+            data_path = os.path.join(data_args.data_path, "training2.json")
         self.list_data_dict = json.load(open(data_path, "r"))
 
         rank0_print("Formatting inputs...Skip in lazy mode")
@@ -257,14 +260,14 @@ class SegDataset(Dataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         # Get sampled masks
-        masks = cv2.imread(sources['annotation'], 0)
+        gt = cv2.imread(sources['annotation'], 0)
         if self.data_type == "ADE":
-            masks[masks == 0] = 255
-            masks -= 1
-            masks[masks == 254] = 255
+            gt[gt == 0] = 255
+            gt -= 1
+            gt[gt == 254] = 255
         sampled_indices = sources['sampled_indices']
         sampled_masks = [
-            (masks == label_idx).astype(np.float32) for label_idx in range(len(sampled_indices))
+            (gt == label_idx).astype(np.float32) for label_idx in range(len(sampled_indices))
         ]
         masks = np.stack(sampled_masks, axis=0)
         masks = torch.from_numpy(masks)

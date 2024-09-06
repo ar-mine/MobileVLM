@@ -1,6 +1,6 @@
 WORK_DIR=$(cd "$(dirname "$0")";pwd)
 export PYTHONPATH=${WORK_DIR}
-OUTPUT_DIR_FT=results/mobilevlm_v2-2.finetune-lora
+OUTPUT_DIR_FT=results/mobilelisa
 python mobilevlm/train/train_mem.py \
         --lora_enable True \
         --lora_r 8 \
@@ -22,13 +22,13 @@ python mobilevlm/train/train_mem.py \
         --group_by_modality_length True \
         --bf16 True \
         --output_dir ${OUTPUT_DIR_FT} \
-        --num_train_epochs 1 \
-        --per_device_train_batch_size 16 \
+        --num_train_epochs 2 \
+        --per_device_train_batch_size 8 \
         --per_device_eval_batch_size 1 \
         --gradient_accumulation_steps 1 \
         --evaluation_strategy "no" \
         --save_strategy "steps" \
-        --save_steps 50000 \
+        --save_steps 10000 \
         --save_total_limit 1 \
         --warmup_ratio 0.03 \
         --lr_scheduler_type "cosine" \
@@ -37,11 +37,12 @@ python mobilevlm/train/train_mem.py \
         --tf32 True \
         --model_max_length 2048 \
         --gradient_checkpointing True \
-        --dataloader_num_workers 8 \
+        --dataloader_num_workers 4 \
         --lazy_preprocess True \
         --report_to none \
         --segment_label True \
         --segment_encoder_path "../sam_vit_h_4b8939.pth" \
         --train_mask_decoder true \
         --wandb_enable true\
+        --mini_batch false\
         2>&1 | tee -a ${OUTPUT_DIR_FT}/log.txt

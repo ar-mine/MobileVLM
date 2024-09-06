@@ -57,6 +57,7 @@ def save_model_structure(module):
     with open("model_structure.json", "w") as f:
         json.dump(output, f)
 
+
 if __name__ == '__main__':
     # 定义一个简单的示例网络
     class SimpleNet(nn.Module):
